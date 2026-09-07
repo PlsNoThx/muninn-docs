@@ -21,30 +21,35 @@ for rules that change how Claude should work in this repo — not a feature log.
 
 ## Architecture (pointers, not prose — don't duplicate these docs here)
 
-- `src/lib/` — all shared logic (places, recommend, profile, store, auth,
-  usercard, plan, add, saved, similarity, csv/pool/geo/avoid/types). CLI
-  scripts and `server/server.ts` are thin callers over this — same types
-  throughout, one language.
-- `server/server.ts` — static + JSON API, auth-aware via Supabase token verify.
-- `src/engine/` — the taste engine switch (`index.ts`): v2 in `src/engine/v2/`
-  (facets, anchors, dossiers, briefs, pre-rank, Sonnet rank, on-save dossier),
-  v1 in `src/engine/v1/` over `src/lib/recommend.ts`.
-- `db/schema.sql` — all tables (profiles, added_places, dislikes, feedback,
-  place_resolutions, import_requests, place_research, and the v2 block:
-  place_dossier, town_research, anchor_state, added_places.weight /
-  anchor_facets / business_status; also in `db/v2.sql`). `db/wipe_account.sql`
-  — scoped single-account reset.
-- Multi-user data model, Phase A/B plan: docs/ARCHITECTURE.md
-- Taste engine v2 design (facet anchors, dossiers, town briefs): docs/TASTE_ENGINE.md
-- Beta (`/beta`) living tracker, shipped batches, open work, and the
-  hard-won MapLibre / browser / rig facts: docs/ROADMAP.md. docs/GLOBE.md is
-  history (the globe.gl and two-engine eras). Next artistic pass: docs/SHADERS.md.
-- Next session's brief (place cards): docs/PLACE_CARDS.md. Per-session
-  handoff: PROGRESS.md.
-- Retiring the classic app and serving the beta at `/`: the audited task
-  list is docs/CUTOVER.md (blockers first).
-- Growth, pricing, and the pre-launch legal checklist: docs/GROWTH.md
-- Longer-horizon ideas (taste graph, integrations): docs/VISION.md
+- `src/lib/` — shared logic (places, profile, store, auth, usercard, plan, add,
+  saved, similarity, csv/pool/geo/avoid/types). CLI scripts and
+  `server/server.ts` are thin callers over this.
+- `src/engine/` — the recommender behind an engine switch (`index.ts`).
+  `TASTE_ENGINE=v1` selects the old flow, which is also the automatic fallback.
+- `public/beta/` — the app: `beta.js`, `saved.js`, `taste.js`, `place.js`,
+  `cards.js`, `owner.js`, `beta.css`, MapLibre. **This is the product.**
+- `public/app.js` + `public/index.html` — the classic app. A separate, working
+  product. Don't touch until CUTOVER section D. `auth.js` and `sw.js` are
+  shared with it; a change there must keep it working.
+- `db/schema.sql` — all tables. `db/wipe_account.sql` — scoped account reset.
+
+**Read the right doc for the work:**
+
+- `PROGRESS.md` (root) — the current page. What changed, what's open, what's next.
+- `docs/ROADMAP.md` — living tracker. Shipped work and open work. **The
+  "Hard-won facts" section at the bottom is required reading before touching
+  the map.**
+- `docs/CUTOVER.md` — retiring the classic app, serving the beta at `/`.
+  The audited task list. Section A in order.
+- `docs/TASTE_ENGINE.md` — taste engine v2: facets, anchors, dossiers, briefs.
+- `docs/GROWTH.md` — monetisation and the pre-launch legal checklist.
+- `docs/PLACE_CARDS.md` — the place card and page brief.
+- `docs/SHADERS.md` — the next artistic pass.
+- `docs/ARCHITECTURE.md` — multi-user data model, Phase A/B.
+- `docs/VISION.md` — long horizon.
+- `docs/DEPLOY.md` — Render + Supabase.
+- `docs/GLOBE.md` — **history only.** The globe.gl and two-engine eras,
+  superseded by the single MapLibre engine. Don't build from it.
 
 ## Conventions
 
@@ -82,11 +87,15 @@ for rules that change how Claude should work in this repo — not a feature log.
   a fresh cached row.
 - **`TASTE_ENGINE` defaults to v2**; v1 exists only as `TASTE_ENGINE=v1` /
   automatic fallback. Confirm which engine a change targets.
-- **Globe/beta UI work stays at the `/beta` path** — don't touch live app
-  routes or components while it's in progress (`public/app.js`,
-  `public/index.html`; `public/auth.js` and `public/sw.js` are shared).
-  Asset URLs carry a `__V__` token the server stamps per boot; keep it on any
-  new `/beta` file or Cloudflare will serve the old one for hours.
+- **`public/app.js` and `public/index.html` are the classic app — don't touch
+  them until CUTOVER section D.** `public/auth.js` and `public/sw.js` are
+  shared; a change there must keep the classic app working until A7.
+- **No Google-derived coordinate goes on the MapLibre map.** Maps Platform ToS
+  §3.2.3 prohibits displaying Places content with or near a non-Google map, and
+  attribution does not cure it. Places stays for resolution, candidates,
+  dossiers and ranking. See `dev/briefs/places-on-non-google-map.md`.
+- **Every new beta file carries the `__V__` token** — Cloudflare edge-caches by
+  extension and will otherwise serve stale assets for hours.
 - **API keys never reach the browser.** Server-side only, no secrets in logs
   or commits.
 - **Every push to `main` restarts the server and kills any town brief in
