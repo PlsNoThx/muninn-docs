@@ -104,11 +104,18 @@ for rules that change how Claude should work in this repo — not a feature log.
 
 - One feature or bug per session. `/clear` between unrelated tasks rather than
   continuing in the same long conversation.
-- Before ending a session: update `PROGRESS.md` (current TODO, what changed,
-  what's next) and commit with a descriptive message. This — not conversation
-  history — is how context survives into the next session.
+- Start with `/session-start <brief>` — it reads `PROGRESS.md`, the brief in
+  `dev/briefs/`, and recent git log, then states a plan before touching code.
+- End with `/session-end` — it updates `PROGRESS.md` and commits. This file,
+  not conversation history, is how context reaches the next session.
 - For open-ended investigation ("why is X slow", "how does Y work"), use a
   subagent rather than burning main-thread context.
+- **Commit subjects are read as a project log.** State what changed and why —
+  never `wip`, `fixes`, or `update`.
+- **`PROGRESS.md`, `CLAUDE.md`, `README.md` and `docs/` are mirrored to a public
+  repo** by `.github/workflows/mirror-docs.yml`. Never write keys, `.env`
+  values, user emails, `OWNER_EMAIL`, user data, or Supabase project refs into
+  any of them.
 
 ## Compaction
 
