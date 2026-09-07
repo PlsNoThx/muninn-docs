@@ -37,30 +37,61 @@ so the pick lands on the chart at once; `npm run backfill-display`
 (resumable, `--misses`, `--retry-misses`, `--homes`), `BACKFILL_DISPLAY`
 at boot, `PIN_PICKS` (default on). No engine file changed.
 
-**Rollout — read before merging this to main.** On deploy the chart draws
-only `place_display` points, and the table is empty: every saved pin
-vanishes until the backfill has run, then they return as rows land. So:
-(1) choose the provider (below); (2) run `npm run backfill-display` with
-the `.env` — or set `BACKFILL_DISPLAY=1` on Render and deploy the server
-commit (`display geometry: the resolver, the table…`) ahead of the
-client commit; (3) `npm run backfill-display -- --homes` for the 21
-profiles with a hometown; (4) merge the client. Size, from the database
-9/7: 2,489 saved rows, **2,106 distinct places**, all with a Google
-lat/lng; plus whatever of the CSV seed is not among them. At 1.1 s a
-request that is 40–45 minutes in one sitting.
+**Rollout state, 9/7 night.** The server half (resolver, table, script,
+flag) is on `main` and deployed; **the client commit is on the branch,
+not on `main`** — Ian sees the numbers first. `place_display` is
+**loaded**: 2,430 rows for the 2,431 distinct places (2,107 saved in the
+database, 324 more from the CSV seed), and the 21 profiles with a
+hometown have a display home. When the client merges, the map shows the
+placed 46% at once and nothing vanishes. The backfill itself was run from
+the build sandbox (the Render box was throttled by the public Nominatim
+after the first minute — cloud egress; do not run it there again), the
+results written into the table by SQL. `npm run backfill-display` is the
+route for everything after this: a save resolves its own point in the
+background, and `--retry-misses` re-asks the misses when a better
+provider or query exists.
+
+**The numbers (2,430 places, public Nominatim, 9/7):** placed **1,121
+(46.1%)**, missed 1,309. Of the placed, 983 scored 0.90 or better, 107
+between 0.70 and 0.89, 31 between 0.55 and 0.69. Of the misses, **1,113
+had no candidate at all** in a city-sized box under either the full name
+or the plainer one — OpenStreetMap does not hold the business; 134 had a
+candidate with a poor name match; 62 had a good name match standing over
+1 km from the check point (another branch of a chain, or a large area
+whose centroid sits far from any point inside it — areas up to 25 km are
+now allowed when the name is near-exact, which recovered a dozen parks
+and islands). The full list, banded, is `dev/display-misses-2026-09-07.txt`.
+Two rules were added mid-run and are in `display.ts`: a candidate over
+1 km off is never a hit (a chain's second shop passed on name alone), and
+a hung connection times out at 15 s (one stalled the serial queue for
+twenty minutes).
+
+**Hometowns:** 21 of 21 placed. 17 to St. Petersburg, Florida (the
+nicknames "st pete", "St. Pete" and the comma forms all resolve now via
+`townQuery`), Atlanta, Salt Lake City, and "Naples" to Naples, Florida —
+by the nearest-settlement rule, checked against where the person's saved
+places cluster (the densest 0.7° cell; a plain average put one user in
+the Atlantic). **Four profiles stay in Russia:** "St. Petersburg" /
+"Saint Petersburg" / "St Petersburg" with no state, no saved places, and
+a Places hometown point Google itself put at 59.9°N. Nothing in the data
+says Florida for them; the display point mirrors the Places one. They
+show up in the Owner sheet's users list; a re-save of the hometown with
+"FL" fixes both points. Flag for Ian, not a code fix.
 
 **Provider finding.** The public Nominatim is free, with an absolute cap of
-one request a second, a real User-Agent and attribution; a 2,100-request
-one-off sits at the edge of its "no heavy use" policy — tolerated once,
-not as a habit, and never inline in a search. Smoke test from the build
-sandbox 9/7: three of four saved places placed at 0.55–0.78 confidence in
-0.6–1.2 s each; "Aguardente" missed (a branded name against a second
-gazetteer, as the brief predicted); a coffee chain's other branch 7 km off
-passed on name alone, which is why the 1 km rule exists. The clean route
-for the backfill and for anything inline is a Nominatim-compatible paid
-tier: LocationIQ (`NOMINATIM_URL=https://us1.locationiq.com/v1`,
-`NOMINATIM_KEY`), whose published free tier is on the order of 5,000
-requests a day at 2 a second — verify before relying on it.
+one request a second, a real User-Agent and attribution. The 2,431-place
+run took about 75 minutes of wall time across restarts at one request a
+second from the sandbox with no throttling; from Render's shared egress it
+was throttled within a minute (`Nominatim busy` on nearly every lookup),
+so the boot-time `BACKFILL_DISPLAY` path is not usable from there against
+the public instance. A Nominatim-compatible paid tier is the clean route
+for anything on Render and for anything inline: LocationIQ
+(`NOMINATIM_URL=https://us1.locationiq.com/v1`, `NOMINATIM_KEY`), whose
+published free tier is on the order of 5,000 requests a day at 2 a
+second — verify before relying on it. **The hit rate is the finding for
+the picks question:** 46% of saved places, and the misses are mostly
+businesses OpenStreetMap does not hold, not query failures. An inline
+re-resolve of sixteen picks would pin roughly seven of them.
 
 **Picks — findings and a recommendation (the decision is Ian's).**
 (a) *Don't pin picks*: `PIN_PICKS=0`; zero latency, zero cost, fully
@@ -74,10 +105,14 @@ order of $50 a month at the entry tiers (verify); but the hit rate caps
 it — a pick the gazetteer cannot match is a card without a pin either
 way, and self-hosting a US extract is a large disk and a day of import.
 (d) *An open candidate source* (Overture, Foursquare) is VISION Phase 2,
-out of scope. **Recommendation:** run the saved-places backfill first and
-read its hit rate (`--misses`). Above about 80%, (c) preserves the
-search's pins for a cost line; below it, (a): flag off, and let
-pin-on-save carry the moment. **A7 cannot ship with `PIN_PICKS` on.**
+out of scope. **Recommendation, now with the number:** the backfill's hit rate is
+46%, well under the 80% that would have justified (c). An inline
+re-resolve would pin about half of a search's picks and leave the rest as
+cards, at a cost line and added latency, for a half-populated map. So
+(a): `PIN_PICKS=0` at A7, picks as cards in the sheet, and the pin
+appears on save — which is built and lands in about a second. Revisit if
+an open candidate source (d) ever supplies its own coordinates.
+**A7 cannot ship with `PIN_PICKS` on.**
 
 **`place_resolutions` finding (flagged, not fixed).** The code stores the
 whole resolved candidate — name, address, types, rating, price, lat/lng,
