@@ -71,12 +71,13 @@ nicknames "st pete", "St. Pete" and the comma forms all resolve now via
 `townQuery`), Atlanta, Salt Lake City, and "Naples" to Naples, Florida —
 by the nearest-settlement rule, checked against where the person's saved
 places cluster (the densest 0.7° cell; a plain average put one user in
-the Atlantic). **Four profiles stay in Russia:** "St. Petersburg" /
+the Atlantic). Four profiles had come out in Russia — "St. Petersburg" /
 "Saint Petersburg" / "St Petersburg" with no state, no saved places, and
-a Places hometown point Google itself put at 59.9°N. Nothing in the data
-says Florida for them; the display point mirrors the Places one. They
-show up in the Owner sheet's users list; a re-save of the hometown with
-"FL" fixes both points. Flag for Ian, not a code fix.
+a Places hometown point Google itself put at 59.9°N. Ian confirmed they
+are St. Pete friends; fixed by hand 9/7 night: hometown_name
+"St. Petersburg, FL", the Places point moved to the one the other Florida
+profiles carry, the display point to the OSM city point. No profile
+points at Russia now.
 
 **Provider finding.** The public Nominatim is free, with an absolute cap of
 one request a second, a real User-Agent and attribution. The 2,431-place
