@@ -33,10 +33,10 @@ the weight vial, the portrait, dark and lite modes, miles or kilometres.
    beta. Port the classic modal (kind: feature / bug / general, a message,
    `POST /api/feedback` with a context string such as the current town) as
    a line on the taste page or the "Who's Muninn?" panel.
-3. **Saved rows without coordinates vanish.** `beta.js` filters `SAVED` to
-   rows with lat and lng, so a saved place the resolver never placed is
-   missing from the saved sheet, the count and the taste stats. Keep every
-   row in the list; only the chart and the distance sorts need the point.
+3. ~~**Saved rows without coordinates vanish.**~~ Shipped 9/7 with the
+   display-geometry pass (`dev/briefs/places-on-non-google-map.md`):
+   `setSaved` keeps every row; the map builders draw only rows with a
+   display point, the count and the taste stats count every row.
 4. **Near-me with no location.** When geolocation is denied or fails, the
    classic app fell back to the profile hometown; the beta toasts and
    stops. Fall back to `HOME` (fly there, name it, show the ring).
@@ -74,6 +74,10 @@ the weight vial, the portrait, dark and lite modes, miles or kilometres.
    - Cloudflare: the repointed `/` HTML is `no-cache`, but verify on the
      phone after the deploy, and remember the `__V__` token is not
      stamped into `.webmanifest` or `.json`.
+   - **Picks:** `PIN_PICKS` must be off, or picks resolved through the
+     display resolver, before this ships. With the flag on, a search pins
+     Google coordinates on the MapLibre map (C18). The flag is a staging
+     device, not a resolution; the options and numbers are in PROGRESS.
 8. **The town route's heartbeat.** `/api/recommend` still has the 100 s
    Cloudflare limit; the beta's fallback for an unplaceable name uses it.
    Once the classic client is gone the route can heartbeat like
@@ -116,14 +120,21 @@ the weight vial, the portrait, dark and lite modes, miles or kilometres.
 
 ## C. Before strangers sign up (GROWTH.md Part 2, restated as tasks)
 
-18. **Google Places content on a non-Google map.** Re-read the current
-    Maps Platform ToS and Places policies and decide: as is, list cards
-    rather than pins for Google-derived results, or an open provider for
-    display with Google for resolution only. Investigate before launch;
-    it is the one item that could change architecture.
+18. **Google Places content on a non-Google map.** Investigated 9/7
+    (`dev/briefs/places-on-non-google-map.md`): ToS §3.2.3 rules out "as
+    is", and attribution does not cure it. Built the same day: an open
+    provider for display, Google for resolution only, for **saved places
+    and the hometown** (`place_display`, `src/lib/display.ts`, the backfill
+    script, `home_display_*` on the profile). **Still open: picks.** A
+    search still pins live Places candidates from Google coordinates
+    behind `PIN_PICKS` (default on, today's behaviour). A7 cannot ship with
+    that flag on; the options with their latency and cost are in PROGRESS,
+    and the decision is Ian's.
 19. **Attribution on screen.** "© OpenStreetMap contributors" visible
     (MapLibre's control, never hidden); "powered by Google" wherever
-    Places data shows; terrain and imagery credits in an about panel.
+    Places data shows — that is the cards, lists and sheets; a pin is
+    now an OpenStreetMap point and carries the OSM credit instead;
+    terrain and imagery credits in an about panel.
 20. **Privacy policy and terms**, linked from onboarding ("by continuing
     you agree") and the about panel. Template services are fine for the
     beta. Saved-places history is location-pattern data; say so.

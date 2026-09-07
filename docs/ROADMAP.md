@@ -339,7 +339,11 @@ what changed last session) is `PROGRESS.md` at the repo root.
    The audited task list (owner tools, feedback, data-safety fixes, the
    root-path plumbing, parity, the legal checklist as tasks, cleanup) is
    [`CUTOVER.md`](CUTOVER.md). A1, the owner sheet (`owner.js`, the
-   fourth nav tab for the owner account), shipped 9/7.
+   fourth nav tab for the owner account), shipped 9/7. A3 and the display
+   half of C18 shipped 9/7 too: every pin on the chart is now an
+   OpenStreetMap point from `place_display` (`src/lib/display.ts`,
+   `npm run backfill-display`), the hometown included; picks are the open
+   half, behind `PIN_PICKS` (brief: `dev/briefs/places-on-non-google-map.md`).
 1. **Shaders / atmosphere** — paper first, then limb. See
    [`SHADERS.md`](SHADERS.md). The terminator piece there is now done as
    geometry (above); a shader would only smooth it further.
@@ -374,6 +378,14 @@ what changed last session) is `PROGRESS.md` at the repo root.
 15. ~~One brief per town~~ — shipped 9/7 ("One town, one brief", above).
 
 ## Hard-won facts (measured, not assumed)
+
+- **The map draws display coordinates only.** A saved row carries two
+  points: `lat/lng` (Google's, for the engine, the distance sorts and the
+  "saved here" groups) and `dlat/dlng` (an OpenStreetMap point from
+  `place_display`, the only one a MapLibre layer may read). A row with the
+  first and not the second has no pin *by design*; it is not a bug to fix
+  with a fallback. Maps Platform ToS §3.2.3. See `mapPt`/`anyPt` in
+  `beta.js` and `dev/briefs/places-on-non-google-map.md`.
 
 Every one of these cost a debugging round. They are not obvious from the docs.
 

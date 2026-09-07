@@ -20,15 +20,100 @@ drill-down, light and dark, the landscape rail); not yet opened on the
 phone against the real queue. Worth one look there: approve a real
 queued import and see the row flip to done after the refresh.
 
+**Display geometry, built 9/7, on the branch — not yet on main.** The
+brief is `dev/briefs/places-on-non-google-map.md` (Ian's decisions on the
+plan are recorded at its foot); it answers the display half of C18 and
+absorbs A3. What shipped: `src/lib/display.ts` (a resolver behind an
+interface; Nominatim, one request a second, a candidate over 1 km from the
+check point is never a hit, confidence = name similarity + closeness);
+`place_display` (one open-provider point per `place_id`, shared, no TTL,
+misses kept as rows) and `profiles.home_display_*` — **both applied in
+Supabase 9/7, the table is empty**; `/api/added` carries `dlat/dlng` and
+every map builder in `beta.js` reads only those (`mapPt`); the count, the
+saved sheet and the taste stats keep every row (A3); the hometown is
+resolved at profile save and HOME is the display point; a save from a
+pick card answers with the pin's point (about a second, capped at 2.5 s)
+so the pick lands on the chart at once; `npm run backfill-display`
+(resumable, `--misses`, `--retry-misses`, `--homes`), `BACKFILL_DISPLAY`
+at boot, `PIN_PICKS` (default on). No engine file changed.
+
+**Rollout — read before merging this to main.** On deploy the chart draws
+only `place_display` points, and the table is empty: every saved pin
+vanishes until the backfill has run, then they return as rows land. So:
+(1) choose the provider (below); (2) run `npm run backfill-display` with
+the `.env` — or set `BACKFILL_DISPLAY=1` on Render and deploy the server
+commit (`display geometry: the resolver, the table…`) ahead of the
+client commit; (3) `npm run backfill-display -- --homes` for the 21
+profiles with a hometown; (4) merge the client. Size, from the database
+9/7: 2,489 saved rows, **2,106 distinct places**, all with a Google
+lat/lng; plus whatever of the CSV seed is not among them. At 1.1 s a
+request that is 40–45 minutes in one sitting.
+
+**Provider finding.** The public Nominatim is free, with an absolute cap of
+one request a second, a real User-Agent and attribution; a 2,100-request
+one-off sits at the edge of its "no heavy use" policy — tolerated once,
+not as a habit, and never inline in a search. Smoke test from the build
+sandbox 9/7: three of four saved places placed at 0.55–0.78 confidence in
+0.6–1.2 s each; "Aguardente" missed (a branded name against a second
+gazetteer, as the brief predicted); a coffee chain's other branch 7 km off
+passed on name alone, which is why the 1 km rule exists. The clean route
+for the backfill and for anything inline is a Nominatim-compatible paid
+tier: LocationIQ (`NOMINATIM_URL=https://us1.locationiq.com/v1`,
+`NOMINATIM_KEY`), whose published free tier is on the order of 5,000
+requests a day at 2 a second — verify before relying on it.
+
+**Picks — findings and a recommendation (the decision is Ian's).**
+(a) *Don't pin picks*: `PIN_PICKS=0`; zero latency, zero cost, fully
+compliant today; the search loses its pins, but a pick pinned on save is
+built and works. (b) *Re-resolve inline at the public Nominatim*: sixteen
+picks in series is 18 s or more on a search that costs 8–25 s, and it is
+against the instance's policy for an app — not viable. (c) *A paid or
+self-hosted geocoder inline*: a paid tier at ten or more requests a second
+resolves sixteen picks in about 2 s in parallel, for a cost line on the
+order of $50 a month at the entry tiers (verify); but the hit rate caps
+it — a pick the gazetteer cannot match is a card without a pin either
+way, and self-hosting a US extract is a large disk and a day of import.
+(d) *An open candidate source* (Overture, Foursquare) is VISION Phase 2,
+out of scope. **Recommendation:** run the saved-places backfill first and
+read its hit rate (`--misses`). Above about 80%, (c) preserves the
+search's pins for a cost line; below it, (a): flag off, and let
+pin-on-save carry the moment. **A7 cannot ship with `PIN_PICKS` on.**
+
+**`place_resolutions` finding (flagged, not fixed).** The code stores the
+whole resolved candidate — name, address, types, rating, price, lat/lng,
+business status — under a 180-day TTL: six Places fields the ToS caps at
+30 days (place_id is the exempt one). In production 9/7 the table holds
+**0 rows**, so nothing is retained past the cap today; the next large
+import will start retaining. Adjacent and larger: `added_places` (2,489
+rows) and `disliked_places` (6 rows) hold name, address, rating, price
+and lat/lng indefinitely, which is the product's design; `place_dossier`'s
+snapshot honours the 30-day rule (0 stale). Raise together with the picks
+decision.
+
+**Cost-note finding (a correction to the brief).** The brief said Google's
+30-day lat/lng limit forces re-resolution today and an indefinitely
+stored open point removes that pressure. The code has no re-resolution
+anywhere: a saved row's lat/lng is written once and read forever, and
+`place_resolutions` refreshes only on a re-import that misses its cache.
+So there is no pressure to remove and no Places spend to save; the display
+geocode is a pure addition — $0 within the public instance's policy, or a
+paid tier's line if picks go inline.
+
+**Not verified this pass:** OSM attribution visible on the phone (the
+control was never hidden; check after the deploy). Rows added from the
+saved sheet or an import get their pin on the next load, once the server
+has resolved them in the background; the save from a pick card gets it
+at once.
+
 Next is **A2, feedback capture**: a way to send feedback from the beta
 (kind: feature / bug / general, a message, `POST /api/feedback` with a
 context string such as the current town), as a line on the taste page or
 the "Who's Muninn?" panel. The owner inbox that reads it is now in place.
-Then A3 (saved rows without coordinates vanish), A4 (near-me falls back
-to the hometown), A5 (the Back button; the owner sheet will need its
-history entry too), A6 (the saved-sheet demote asks a reason, the promote
-offers a note), A7 (serving `/`, one commit with a deploy window), A8 (the
-town route's heartbeat).
+Then A4 (near-me falls back to the hometown — HOME is now the display
+point), A5 (the Back button; the owner sheet will need its history entry
+too), A6 (the saved-sheet demote asks a reason, the promote offers a
+note), A7 (serving `/`, one commit with a deploy window; `PIN_PICKS` must
+be off first), A8 (the town route's heartbeat).
 
 Rules that hold through the cutover: `public/app.js` and
 `public/index.html` stay untouched until section D; `public/auth.js` and

@@ -296,6 +296,34 @@ The app has two tabs:
 (Codespaces does this automatically — open the forwarded URL). On the phone, use
 the browser's "Add to Home Screen" to install it.
 
+### Display geometry — where a pin is drawn
+
+Google Places content may not be shown on a non-Google map (Maps Platform ToS
+§3.2.3), so the beta's MapLibre chart never draws a Google coordinate. Each
+saved place gets an OpenStreetMap point from Nominatim, resolved once per
+`place_id` and shared by everyone in `place_display` (`src/lib/display.ts`);
+the hometown gets one at profile save (`profiles.home_display_*`). A place the
+geocoder cannot match is kept as a miss: it stays in every list and has no pin.
+Brief: `dev/briefs/places-on-non-google-map.md`.
+
+```bash
+npm run backfill-display -- --dry-run        # count what is unplaced
+npm run backfill-display                     # ~1 request/s; ~2,000 places ≈ 40 min, resumable
+npm run backfill-display -- --misses         # list the recorded misses
+npm run backfill-display -- --retry-misses   # ask again for them
+npm run backfill-display -- --min-confidence 0.6 --limit 100
+npm run backfill-display -- --homes          # a display point for every profile's hometown
+```
+
+Env (all optional): `DISPLAY_GEOCODER` (only `nominatim`), `NOMINATIM_URL`
+(a self-hosted or paid instance with the same API, e.g. LocationIQ),
+`NOMINATIM_KEY` (a paid tier's key), `NOMINATIM_USER_AGENT` (the public instance
+requires a real contact), `NOMINATIM_MIN_MS` (gap between requests, default
+1100), `BACKFILL_DISPLAY=1` (run the backfill at server boot, where the
+database key lives; unset when it reports done). `PIN_PICKS=0` lists search
+picks in the sheet instead of pinning them from Google coordinates — the
+default is still on, and that is the open half of CUTOVER C18.
+
 ### Bulk import
 
 Profile → Places → **Import a list**. Paste a list (one place per line, ideally
@@ -409,13 +437,15 @@ src/lib/
   profile.ts              taste-profile builder + card renderer
   recommend.ts            candidate discovery + Claude ranking (shared core)
   saved.ts                CSV + added places, favorites vs want-to-go split
+  display.ts              open-provider display points for the map (Nominatim), never Google's
   add.ts                  freeform "add a place" parsing
   plan.ts                 request → domains + "X near Y" pairing
   store.ts                Supabase: added/disliked places, profiles, feedback
   auth.ts                 verify Supabase Auth tokens (server side)
   usercard.ts             per-user taste card + dietary/preference blocks
   csv.ts, pool.ts, geo.ts, avoid.ts, types.ts
-scripts/                  CLIs: enrich.ts, build-profile.ts, recommend.ts
+scripts/                  CLIs: enrich.ts, build-profile.ts, recommend.ts,
+                          backfill-dossiers.ts, backfill-display.ts
 server/server.ts          web server (static + JSON API, auth-aware)
 public/                   the installable PWA (index.html, app.js, auth.js, …)
 .github/workflows/        enrich.yml — run enrichment in CI
