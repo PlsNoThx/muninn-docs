@@ -135,6 +135,14 @@ So there is no pressure to remove and no Places spend to save; the display
 geocode is a pure addition — $0 within the public instance's policy, or a
 paid tier's line if picks go inline.
 
+**Noted for later (Ian, 9/9):** a confirm-the-pin mechanism — the person
+places or confirms the coin on our own chart, stored as `place_display`
+with `source: "user"`, so the point is first-party data and can be drawn
+regardless of where the place was first found. ROADMAP open work 0b
+carries the design notes and the one constraint (never pre-fill from the
+Google point or address). This is the durable answer to the 54% of saved
+places with no pin, and to picks.
+
 **Not verified this pass:** OSM attribution visible on the phone (the
 control was never hidden; check after the deploy). Rows added from the
 saved sheet or an import get their pin on the next load, once the server

@@ -344,6 +344,24 @@ what changed last session) is `PROGRESS.md` at the repo root.
    OpenStreetMap point from `place_display` (`src/lib/display.ts`,
    `npm run backfill-display`), the hometown included; picks are the open
    half, behind `PIN_PICKS` (brief: `dev/briefs/places-on-non-google-map.md`).
+0b. **Confirmed places: our own coordinates.** Ian's note, 9/9. The
+   display backfill placed 46% of saved places from OpenStreetMap; the
+   rest have no pin because OSM does not hold the business, and the
+   Google address may not be used to derive one (ToS §3.2.3). Build a
+   mechanism where the *person* places or confirms the pin — "is this
+   the spot?" on the place page, or drag the coin on the chart to where
+   it belongs — and store that as `place_display` with
+   `source: "user"` and the confirming user's id. A point a person set
+   with their own hand on our own map is first-party data, not Places
+   content, and it can be drawn anywhere. Design notes: offer it only
+   for unplaced rows (and as a correction on placed ones); show the OSM
+   candidate to confirm when there is one, a blank chart to drop the
+   coin on when there is not; never pre-fill from the Google point or
+   the address, or the confirmation is a laundering step rather than the
+   person's own knowledge — a lawyer should agree with that line before
+   it ships (GROWTH Part 2). One confirmation serves everyone who saved
+   the place. Pairs with A7's picks decision: a pick confirmed on save
+   is a pin.
 1. **Shaders / atmosphere** — paper first, then limb. See
    [`SHADERS.md`](SHADERS.md). The terminator piece there is now done as
    geometry (above); a shader would only smooth it further.
